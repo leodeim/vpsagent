@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   release:
+    name: Build and publish release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -29,6 +30,9 @@ jobs:
       - name: Test
         working-directory: vpsagent
         run: go test ./...
+      - name: Vet
+        working-directory: vpsagent
+        run: go vet ./...
       - name: Choose release tag
         working-directory: vpsagent
         shell: bash

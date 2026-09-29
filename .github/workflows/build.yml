@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          path: vpsagent
+      - uses: actions/checkout@v6
+        with:
+          repository: leodeim/vpsmonlib
+          path: vpsmonlib
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: vpsagent/go.mod
+      - name: Test
+        working-directory: vpsagent
+        run: go test ./...
+      - name: Choose release tag
+        working-directory: vpsagent
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          else
+            latest=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+            latest=${latest:-v0.0.0}
+            IFS=. read -r major minor patch <<<"${latest#v}"
+            echo "RELEASE_TAG=v${major}.${minor}.$((patch + 1))" >> "$GITHUB_ENV"
+          fi
+      - name: Build binaries
+        working-directory: vpsagent
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64; do
+            os=${target%/*}
+            arch=${target#*/}
+            GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags="-s -w" -o "dist/vpsagent-${os}-${arch}" ./cmd/vpsagent
+          done
+      - name: Checksums
+        working-directory: vpsagent/dist
+        run: sha256sum vpsagent-* > checksums.txt
+      - name: Publish
+        working-directory: vpsagent
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/* --target "$GITHUB_SHA" --generate-notes --title "vpsagent $RELEASE_TAG"
+          fi

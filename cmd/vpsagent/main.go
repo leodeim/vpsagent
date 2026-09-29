@@ -1,0 +1,76 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/leodeim/vpsagent/internal/cloud"
+	"github.com/leodeim/vpsmonlib/metrics"
+)
+
+func envBool(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func main() {
+	if len(os.Args) > 1 && os.Args[1] == "connect" {
+		connect(os.Args[2:])
+		return
+	}
+	if len(os.Args) > 1 {
+		log.Fatalf("unknown command %q; use 'vpsagent connect' or run without arguments", os.Args[1])
+	}
+
+	cloudURL := os.Getenv("VPSAGENT_CLOUD_URL")
+	cloudToken := os.Getenv("VPSAGENT_CLOUD_TOKEN")
+	if path := os.Getenv("VPSAGENT_CONFIG"); path != "" {
+		credentials, err := cloud.LoadCredentials(path)
+		if err != nil {
+			log.Fatalf("load VPSAGENT_CONFIG: %v", err)
+		}
+		cloudURL, cloudToken = credentials.URL, credentials.Token
+	}
+	snapshots := envBool("VPSAGENT_INCIDENT_SNAPSHOTS")
+	client, err := cloud.New(cloud.Config{
+		URL: cloudURL, Token: cloudToken,
+		AllowInsecure:   envBool("VPSAGENT_ALLOW_INSECURE"),
+		EnableSnapshots: snapshots,
+	})
+	if err != nil {
+		log.Fatalf("invalid Cloud configuration: %v", err)
+	}
+	metrics.StartCollectorWithOptions(metrics.Options{TopProcesses: snapshots, Containers: snapshots})
+	log.Printf("vpsagent collecting local metrics and uploading to %s", cloudURL)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	client.Start(ctx)
+	<-ctx.Done()
+}
+
+func connect(args []string) {
+	flags := flag.NewFlagSet("vpsagent connect", flag.ExitOnError)
+	url := flags.String("url", "", "VPSmon Cloud HTTPS URL")
+	setupToken := flags.String("setup-token", "", "short-lived token from VPSmon Cloud")
+	configPath := flags.String("config", "", "owner-only credentials file to create")
+	allowInsecure := flags.Bool("allow-insecure-local", false, "allow HTTP only for a localhost development Cloud")
+	_ = flags.Parse(args)
+	if *configPath == "" {
+		fmt.Fprintln(os.Stderr, "--config is required; for a service install use /opt/vpsagent/cloud.json")
+		os.Exit(2)
+	}
+	if err := cloud.Connect(context.Background(), *url, *setupToken, *configPath, *allowInsecure); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("Cloud connected. Set VPSAGENT_CONFIG=%s and start vpsagent.\n", *configPath)
+}

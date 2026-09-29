@@ -1,0 +1,10 @@
+*
+!vpsagent
+!vpsagent/**
+!vpsmonlib
+!vpsmonlib/**
+**/.git
+**/.git/**
+**/.env
+**/tmp
+**/tmp/**

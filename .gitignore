@@ -1,2 +1,4 @@
 /vpsagent
+/.env
+/cloud.json
 .DS_Store

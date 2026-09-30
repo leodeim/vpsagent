@@ -19,22 +19,14 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          path: vpsagent
-      - uses: actions/checkout@v6
-        with:
-          repository: leodeim/vpsmonlib
-          path: vpsmonlib
       - uses: actions/setup-go@v6
         with:
-          go-version-file: vpsagent/go.mod
+          go-version-file: go.mod
       - name: Test
-        working-directory: vpsagent
         run: go test ./...
       - name: Vet
-        working-directory: vpsagent
         run: go vet ./...
       - name: Choose release tag
-        working-directory: vpsagent
         shell: bash
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
@@ -46,7 +38,6 @@ jobs:
             echo "RELEASE_TAG=v${major}.${minor}.$((patch + 1))" >> "$GITHUB_ENV"
           fi
       - name: Build binaries
-        working-directory: vpsagent
         env:
           CGO_ENABLED: "0"
         run: |
@@ -57,10 +48,9 @@ jobs:
             GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags="-s -w" -o "dist/vpsagent-${os}-${arch}" ./cmd/vpsagent
           done
       - name: Checksums
-        working-directory: vpsagent/dist
+        working-directory: dist
         run: sha256sum vpsagent-* > checksums.txt
       - name: Publish
-        working-directory: vpsagent
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

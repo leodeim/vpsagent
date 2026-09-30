@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -62,6 +63,7 @@ func connect(args []string) {
 	flags := flag.NewFlagSet("vpsagent connect", flag.ExitOnError)
 	url := flags.String("url", "", "VPSmon Cloud HTTPS URL")
 	setupToken := flags.String("setup-token", "", "short-lived token from VPSmon Cloud")
+	setupTokenStdin := flags.Bool("setup-token-stdin", false, "read the setup token from standard input")
 	configPath := flags.String("config", "", "owner-only credentials file to create")
 	allowInsecure := flags.Bool("allow-insecure-local", false, "allow HTTP only for a localhost development Cloud")
 	_ = flags.Parse(args)
@@ -69,7 +71,18 @@ func connect(args []string) {
 		fmt.Fprintln(os.Stderr, "--config is required; for a service install use /opt/vpsagent/cloud.json")
 		os.Exit(2)
 	}
-	if err := cloud.Connect(context.Background(), *url, *setupToken, *configPath, *allowInsecure); err != nil {
+	token := *setupToken
+	if *setupTokenStdin {
+		if token != "" {
+			log.Fatal("use either --setup-token or --setup-token-stdin")
+		}
+		data, err := io.ReadAll(io.LimitReader(os.Stdin, 4097))
+		if err != nil || len(data) > 4096 {
+			log.Fatal("unable to read setup token from standard input")
+		}
+		token = strings.TrimSpace(string(data))
+	}
+	if err := cloud.Connect(context.Background(), *url, token, *configPath, *allowInsecure); err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("Cloud connected. Set VPSAGENT_CONFIG=%s and start vpsagent.\n", *configPath)

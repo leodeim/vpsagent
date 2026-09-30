@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leodeim/vpsmonlib/metrics"
+	"github.com/vpsmon/vpsmonlib/metrics"
 )
 
 func TestNewRequiresHTTPSAndCredentials(t *testing.T) {

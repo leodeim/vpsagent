@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/leodeim/vpsagent/internal/cloud"
-	"github.com/leodeim/vpsmonlib/metrics"
+	"github.com/vpsmon/vpsagent/internal/cloud"
+	"github.com/vpsmon/vpsmonlib/metrics"
 )
 
 func envBool(key string) bool {

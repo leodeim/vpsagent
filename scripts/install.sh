@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 # Installs only vpsagent. The local vpsmon dashboard is not changed.
-REPO=leodeim/vpsagent
+REPO=vpsmon/vpsagent
 APP_NAME=vpsagent
 REMOTE_DIR=/opt/vpsagent
 SERVICE_USER=vpsagent

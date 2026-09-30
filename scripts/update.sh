@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-REPO=leodeim/vpsagent
+REPO=vpsmon/vpsagent
 APP_NAME=vpsagent
 REMOTE_DIR=/opt/vpsagent
 BIN_PATH="$REMOTE_DIR/$APP_NAME"

@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/leodeim/vpsmonlib/metrics"
+	"github.com/vpsmon/vpsmonlib/metrics"
 )
 
 const DefaultInterval = 15 * time.Second
